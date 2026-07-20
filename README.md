@@ -1,0 +1,1 @@
+CareerForge tells you the truth about your resume — what fits, what's missing, and how to talk about it in an interview. No auto-apply spam. No resume stored on a server. No paywall hiding the parts that actually help.
