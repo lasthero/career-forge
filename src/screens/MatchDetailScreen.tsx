@@ -196,28 +196,28 @@ export default function MatchDetailScreen() {
             ))}
           </View>
 
-          {interviewPrep.strengthsToHighlight.map((str: any, i) => (
-            <Text key={`sh-${i}`} style={[s2.bullet, { color: colors.text }]}>
-                • {typeof str === 'string' ? str : JSON.stringify(str)}
-            </Text>
+          <View style={s.card}>
+            <Text style={[s.sectionLabel, { color: colors.text, opacity: 0.85 }]}>Strengths to Highlight</Text>
+            {interviewPrep.strengthsToHighlight.map((str, i) => (
+              <Text key={`sh-${i}`} style={[s2.bullet, { color: colors.text }]}>• {str}</Text>
             ))}
+          </View>
 
           {interviewPrep.gapsToAddress.length > 0 && (
             <View style={s.card}>
-                <Text style={s.sectionLabel}>How to Address Gaps</Text>
-                {interviewPrep.gapsToAddress.map((g: any, i) => (
-                <Text key={`ga-${i}`} style={[s2.bullet, { color: colors.text }]}>
-                    • {typeof g === 'string' ? g : (g.tipToAddress ?? g.gap ?? JSON.stringify(g))}
-                </Text>
-                ))}
+              <Text style={[s.sectionLabel, { color: colors.text, opacity: 0.85 }]}>How to Address Gaps</Text>
+              {interviewPrep.gapsToAddress.map((g, i) => (
+                <Text key={`ga-${i}`} style={[s2.bullet, { color: colors.text }]}>• {g}</Text>
+              ))}
             </View>
           )}
 
-          {interviewPrep.generalTips.map((tip: any, i) => (
-            <Text key={`gt-${i}`} style={[s2.bullet, { color: colors.text }]}>
-                • {typeof tip === 'string' ? tip : JSON.stringify(tip)}
-            </Text>
+          <View style={s.card}>
+            <Text style={[s.sectionLabel, { color: colors.text, opacity: 0.85 }]}>General Tips</Text>
+            {interviewPrep.generalTips.map((tip, i) => (
+              <Text key={`gt-${i}`} style={[s2.bullet, { color: colors.text }]}>• {tip}</Text>
             ))}
+          </View>
         </>
       )}
 

@@ -1,9 +1,9 @@
-import React from 'react';
+// career-forge/src/screens/ResumeScreen.tsx
+import React, { useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
   TouchableOpacity, Platform,
 } from 'react-native';
-import { useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme, fonts } from '../lib/theme';
@@ -37,23 +37,30 @@ const Section = ({ title, children, colors }: { title: string; children: React.R
 export default function ResumeScreen() {
   const { colors, accent } = useTheme();
   const router = useRouter();
-  const { resume, clear, startClearing } = useResumeStore();
-  
+  const { resume, clear } = useResumeStore();
+
   useEffect(() => {
     if (!resume) {
       router.replace('/');
     }
   }, [resume]);
-  
+
   if (!resume) return null;
   const s = styles(colors, accent);
 
   const handleUploadDifferent = async () => {
-    await clearStoredResume(); // ← clear from SecureStore first
-    clear();
-    console.log('[clear] isClearing after clear():', useResumeStore.getState().isClearing);
-
+    await clearStoredResume(); // clear SecureStore first
+    clear();                   // then clear Zustand — triggers the redirect above
   };
+
+  // guard every field — the AI-parsed schema may omit optional sections
+  // depending on the candidate's field/industry
+  const skills          = resume.skills ?? {};
+  const experience      = resume.experience ?? [];
+  const education        = resume.education ?? [];
+  const credentials      = resume.credentials ?? [];
+  const achievements     = resume.achievements ?? [];
+  const additional       = resume.additional ?? [];
 
   return (
     <ScrollView style={s.container} contentContainerStyle={s.content}>
@@ -61,57 +68,99 @@ export default function ResumeScreen() {
       <View style={s.card}>
         <Text style={s.name}>{resume.name}{resume.alias ? ` (${resume.alias})` : ''}</Text>
         <Text style={s.title}>{resume.title}</Text>
+        {resume.industry && (
+          <View style={{ marginTop: 4 }}>
+            <Tag label={resume.industry} colors={colors} accent={accent} />
+          </View>
+        )}
         <View style={s.contactRow}>
-          {resume.contact.email && (
+          {resume.contact?.email && (
             <Text style={s.contact}>{resume.contact.email}</Text>
           )}
         </View>
       </View>
 
       {/* Skills */}
-      <View style={s.card}>
-        <Section title="Skills" colors={colors}>
-          {Object.entries(resume.skills).map(([category, items]) => (
-            <View key={category} style={{ marginBottom: 12 }}>
-              <Text style={s.categoryLabel}>{category}</Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-                {items.map(skill => <Tag key={skill} label={skill} colors={colors} accent={accent} />)}
+      {Object.keys(skills).length > 0 && (
+        <View style={s.card}>
+          <Section title="Skills" colors={colors}>
+            {Object.entries(skills).map(([category, items]) => (
+              <View key={category} style={{ marginBottom: 12 }}>
+                <Text style={s.categoryLabel}>{category}</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                  {(items ?? []).map(skill => <Tag key={skill} label={skill} colors={colors} accent={accent} />)}
+                </View>
               </View>
-            </View>
-          ))}
-        </Section>
-      </View>
+            ))}
+          </Section>
+        </View>
+      )}
 
       {/* Experience */}
-      <View style={s.card}>
-        <Section title="Experience" colors={colors}>
-          {resume.experience.map((job, i) => (
-            <View key={i} style={s.jobEntry}>
-              <View style={s.jobHeader}>
-                <Text style={s.jobTitle}>{job.title}</Text>
-                <Text style={s.jobPeriod}>{job.period}</Text>
-              </View>
-              <Text style={s.jobCompany}>{job.company}</Text>
-              {job.bullets.map((b, j) => (
-                <Text key={j} style={s.bullet}>• {b}</Text>
-              ))}
-            </View>
-          ))}
-          {resume.additional.length > 0 && (
-            <Text style={s.additional}>+ {resume.additional.join(' · ')}</Text>
-          )}
-        </Section>
-      </View>
-
-      {/* Certifications */}
-      {resume.certifications.length > 0 && (
+      {experience.length > 0 && (
         <View style={s.card}>
-          <Section title="Certifications" colors={colors}>
-            {resume.certifications.map((cert, i) => (
-              <View key={i} style={s.certRow}>
-                <Text style={s.certName}>{cert.name}</Text>
-                <Text style={s.certYear}>{cert.year}</Text>
+          <Section title="Experience" colors={colors}>
+            {experience.map((job, i) => (
+              <View key={i} style={s.jobEntry}>
+                <View style={s.jobHeader}>
+                  <Text style={s.jobTitle}>{job.title}</Text>
+                  <Text style={s.jobPeriod}>{job.period}</Text>
+                </View>
+                <Text style={s.jobCompany}>{job.company}</Text>
+                {(job.bullets ?? []).map((b, j) => (
+                  <Text key={j} style={s.bullet}>• {b}</Text>
+                ))}
               </View>
+            ))}
+            {additional.length > 0 && (
+              <Text style={s.additional}>+ {additional.join(' · ')}</Text>
+            )}
+          </Section>
+        </View>
+      )}
+
+      {/* Education */}
+      {education.length > 0 && (
+        <View style={s.card}>
+          <Section title="Education" colors={colors}>
+            {education.map((ed, i) => (
+              <View key={i} style={s.certRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.certName}>{ed.degree}</Text>
+                  <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>{ed.institution}</Text>
+                </View>
+                {ed.year && <Text style={s.certYear}>{ed.year}</Text>}
+              </View>
+            ))}
+          </Section>
+        </View>
+      )}
+
+      {/* Credentials (certifications, licenses, bar admissions, etc.) */}
+      {credentials.length > 0 && (
+        <View style={s.card}>
+          <Section title="Credentials" colors={colors}>
+            {credentials.map((cred, i) => (
+              <View key={i} style={s.certRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.certName}>{cred.name}</Text>
+                  {cred.issuer && (
+                    <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>{cred.issuer}</Text>
+                  )}
+                </View>
+                {cred.year && <Text style={s.certYear}>{cred.year}</Text>}
+              </View>
+            ))}
+          </Section>
+        </View>
+      )}
+
+      {/* Achievements (quota attainment, publications, awards, etc.) */}
+      {achievements.length > 0 && (
+        <View style={s.card}>
+          <Section title="Achievements" colors={colors}>
+            {achievements.map((ach, i) => (
+              <Text key={i} style={s.bullet}>• {ach}</Text>
             ))}
           </Section>
         </View>
@@ -148,9 +197,9 @@ const styles = (colors: any, accent: string) => StyleSheet.create({
   jobCompany:    { fontSize: 14, color: accent, marginBottom: 6 },
   bullet:        { fontSize: 13, color: colors.textSecondary, lineHeight: 20, marginBottom: 3 },
   additional:    { fontSize: 13, color: colors.textMuted, marginTop: 4 },
-  certRow:       { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  certName:      { fontSize: 14, color: colors.text, flex: 1 },
-  certYear:      { fontSize: 13, color: colors.textMuted },
+  certRow:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
+  certName:      { fontSize: 14, color: colors.text },
+  certYear:      { fontSize: 13, color: colors.textMuted, marginLeft: 8 },
   cta: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     backgroundColor: accent, borderRadius: Platform.OS === 'ios' ? 14 : 8,
