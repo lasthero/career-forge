@@ -1,4 +1,7 @@
 node_modules/
-src/node_modules/
-app_id=43bb0000
+.expo/
+*.p12
+*.keystore
+*.jks
 .env
+.env.local
