@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "CareerForge",
-    "slug": "career-forge",
+    "slug": "careerforge",
     "version": "1.0.0",
     "sdkVersion": "54.0.0",
     "orientation": "portrait",
@@ -28,6 +28,13 @@
       "expo-secure-store",
       "expo-document-picker"
     ],
-    "scheme": "career-forge"
+    "scheme": "career-forge",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "326766dc-7619-4a27-9aae-05ab6e60182c"
+      }
+    },
+    "owner": "lastheros-team"
   }
 }
