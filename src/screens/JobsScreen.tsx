@@ -100,7 +100,7 @@ export default function JobsScreen() {
           <Ionicons name="search" size={16} color={colors.textMuted} style={{ marginRight: 8 }} />
           <TextInput
             style={s.input}
-            placeholder="senior SRE, platform engineer..."
+            placeholder="job title, e.g. software engineer, registered nurse, sales rep..."
             placeholderTextColor={colors.textMuted}
             value={query}
             onChangeText={setQuery}

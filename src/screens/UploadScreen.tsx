@@ -1,3 +1,4 @@
+// career-forge/src/screens/UploadScreen.tsx
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
@@ -22,13 +23,13 @@ export default function UploadScreen() {
 
   const pick = async () => {
     try {
-        const result = await DocumentPicker.getDocumentAsync({
-            // don't filter by type — let user pick anything, then validate
-            copyToCacheDirectory: true,
-        });
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'application/pdf',
+        copyToCacheDirectory: true,
+      });
 
-        if (result.canceled) return;
-        const file = result.assets[0];
+      if (result.canceled) return;
+      const file = result.assets[0];
 
         // validate file type after selection
         if (file.mimeType !== 'application/pdf') {
@@ -37,30 +38,36 @@ export default function UploadScreen() {
             return;
         }
 
-        setFileName(file.name);
-        setError(null);
-        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        setStatus('parsing');
-        await new Promise(resolve => setTimeout(resolve, 300)); // 300ms gives Android time to re-render
+      setFileName(file.name);
+      setError(null);
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-        const resumeData = await parseResume(file.uri);
-        console.log('[UploadScreen] parsed resume:', resumeData.experience); // add this
+      // parse PDF — stays on device, only base64 text sent to API
+      setStatus('parsing');
+      await new Promise(resolve => setTimeout(resolve, 300)); // 300ms gives Android time to re-render
 
-        setResume(resumeData);
+      const resumeData = await parseResume(file.uri);
+      setResume(resumeData);
+      setStatus('idle'); // reset before navigating — this screen may stay
+                          // mounted underneath in the stack, and if it does,
+                          // it must not show a frozen "parsing" spinner if
+                          // the user ever navigates back to it
 
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        router.push('/resume');
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      router.replace('/resume'); // replace, not push — an upload that already
+                                  // succeeded should never reappear in the back
+                                  // stack as a revisitable "in progress" screen
 
     } catch (err: any) {
-        setStatus('idle');
-        if (err.message === 'RATE_LIMITED') {
-            setError('Daily limit reached (3/day). Try again tomorrow.');
-        } else {
-            setError(err.message ?? 'Something went wrong. Please try again.');
-        }
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      setStatus('idle');
+      if (err.message === 'RATE_LIMITED') {
+        setError('Daily limit reached (3/day). Try again tomorrow.');
+      } else {
+        setError(err.message ?? 'Something went wrong. Please try again.');
+      }
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
-    };
+  };
 
   const s = styles(colors, accent);
 
