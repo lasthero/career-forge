@@ -2,6 +2,7 @@
   "expo": {
     "name": "CareerForge",
     "slug": "careerforge",
+    "scheme": "career-forge",
     "version": "1.0.0",
     "sdkVersion": "54.0.0",
     "orientation": "portrait",
@@ -14,22 +15,32 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "info.chihho.careerforge"
+      "bundleIdentifier": "info.chihho.careerforge",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Select your resume PDF from photos",
+        "NSLocationWhenInUseUsageDescription": "CareerForge can use your location to search for jobs near you. This is optional — you can always type a location manually instead."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#1e3a8a"
       },
-      "package": "info.chihho.careerforge"
+      "package": "info.chihho.careerforge",
+      "permissions": ["READ_EXTERNAL_STORAGE", "ACCESS_COARSE_LOCATION"]
     },
     "plugins": [
       "expo-router",
       "expo-secure-store",
       "expo-document-picker",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "CareerForge can use your location to search for jobs near you. This is optional — you can always type a location manually instead."
+        }
+      ]
     ],
-    "scheme": "career-forge",
     "extra": {
       "router": {},
       "eas": {

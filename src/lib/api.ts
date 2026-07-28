@@ -113,6 +113,8 @@ export type JobMatch = {
   matchSummary:   string;
   strengths:      string[];
   gaps:           string[];
+  requirements:          string[]; // "must have" bullets extracted from the posting
+  preferredRequirements: string[]; // "nice to have" bullets, if the posting distinguishes them
   recommendation: 'strong yes' | 'yes' | 'maybe' | 'no';
   applyUrl:       string;
   salary?: { min: number | null; max: number | null; display: string | null };
@@ -180,13 +182,15 @@ export async function parseResume(fileUri: string): Promise<ResumeData> {
 // ── 2. Match jobs — resume text passed directly, not fetched from S3 ─────────
 export async function matchJobs(
   resume: ResumeData,
-  query?: string
+  query?: string,
+  location?: string
 ): Promise<MatchResult> {
   return apiFetch('/analyze', {
     method: 'POST',
     body: JSON.stringify({
       resumeText: JSON.stringify(resume),
       jobQuery:   query,
+      location:   location,
     }),
   });
 }

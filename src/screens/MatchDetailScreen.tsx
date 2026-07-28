@@ -109,8 +109,16 @@ export default function MatchDetailScreen() {
         </Text>
       </View>
 
-      {/* Requirements / description */}
-      {description.length > 0 && (
+      {/* Requirements — structured bullets extracted by AI from the posting */}
+      {selectedJob.requirements.length > 0 ? (
+        <View style={s.card}>
+          <Text style={s.sectionLabel}>Requirements</Text>
+          {selectedJob.requirements.map((req, i) => (
+            <Text key={`req-${i}`} style={s.reqBullet}>• {req}</Text>
+          ))}
+        </View>
+      ) : description.length > 0 && (
+        // fallback for older cached results that predate structured requirements
         <View style={s.card}>
           <Text style={s.sectionLabel}>Job Requirements</Text>
           <Text style={{ fontSize: 14, color: colors.textSecondary, lineHeight: 21, marginTop: 8 }}>
@@ -128,6 +136,16 @@ export default function MatchDetailScreen() {
               </Text>
             </TouchableOpacity>
           )}
+        </View>
+      )}
+
+      {/* Preferred requirements — "nice to have", shown only if the posting distinguished them */}
+      {selectedJob.preferredRequirements.length > 0 && (
+        <View style={s.card}>
+          <Text style={s.sectionLabel}>Preferred Requirements</Text>
+          {selectedJob.preferredRequirements.map((req, i) => (
+            <Text key={`pref-${i}`} style={s.reqBullet}>• {req}</Text>
+          ))}
         </View>
       )}
 
@@ -238,6 +256,7 @@ const styles = (colors: any, accent: string) => StyleSheet.create({
   location:     { fontSize: 13, color: colors.textMuted },
   salary:       { fontSize: 14, color: colors.textSecondary, marginTop: 6, fontWeight: '500' },
   sectionLabel: { fontSize: 13, fontWeight: '600', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
+  reqBullet:    { fontSize: 14, color: colors.text, lineHeight: 22, marginTop: 8 },
   applyBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: accent, borderRadius: Platform.OS === 'ios' ? 14 : 8, padding: 16, marginBottom: 12, marginTop: 4 },
   applyBtnText: { color: '#fff', fontSize: 17, fontWeight: '600' },
   prepBtn:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1.5, borderColor: accent, borderRadius: Platform.OS === 'ios' ? 14 : 8, padding: 16, marginBottom: 20 },

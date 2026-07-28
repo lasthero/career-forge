@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+// career-forge/src/screens/JobsScreen.tsx
+import React, { useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TextInput,
   TouchableOpacity, ActivityIndicator, Platform,
@@ -9,6 +10,7 @@ import * as Haptics from 'expo-haptics';
 import { useTheme, fonts } from '../lib/theme';
 import { useResumeStore } from '../lib/store';
 import { matchJobs, JobMatch } from '../lib/api';
+import { getCurrentCityLocation } from '../lib/location';
 
 const recColors: Record<string, string> = {
   'strong yes': '#30d158',
@@ -62,24 +64,63 @@ export default function JobsScreen() {
   const { resume, matchResult, setMatchResult, setSelectedJob } = useResumeStore();
 
   const [query, setQuery] = useState('');
+  const [location, setLocation] = useState('');
+  const [locating, setLocating] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const useMyLocation = async () => {
+    setLocating(true);
+    try {
+      const city = await getCurrentCityLocation();
+      if (city) {
+        setLocation(city);
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      } else {
+        setError('Could not determine your location. You can type it in manually instead.');
+      }
+    } catch {
+      setError('Could not access location. You can type it in manually instead.');
+    } finally {
+      setLocating(false);
+    }
+  };
+
+  // guards against out-of-order responses — if the user searches again
+  // before a previous search finishes, the older (slower) response must
+  // never be allowed to overwrite the results of a newer search
+  const searchRequestId = useRef(0);
+
   const search = async () => {
     if (!resume) return router.replace('/');
+
+    const thisRequestId = ++searchRequestId.current;
+
     setLoading(true);
     setError(null);
     try {
-      const result = await matchJobs(resume, query);
+      const result = await matchJobs(resume, query, location || undefined);
+
+      // a newer search has started since this one began — discard this
+      // stale result instead of overwriting what the user is now looking at
+      if (thisRequestId !== searchRequestId.current) {
+        console.log('[search] discarding stale response for request', thisRequestId);
+        return;
+      }
+
       setMatchResult(result);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (err: any) {
+      if (thisRequestId !== searchRequestId.current) return; // stale error too
+
       setError(err.message === 'RATE_LIMITED'
         ? 'Daily limit reached (3/day). Try again tomorrow.'
         : err.message);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
-      setLoading(false);
+      if (thisRequestId === searchRequestId.current) {
+        setLoading(false);
+      }
     }
   };
 
@@ -94,27 +135,51 @@ export default function JobsScreen() {
     <ScrollView style={s.container} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
       <Text style={s.heading}>Job Matches</Text>
 
-      {/* Search */}
-      <View style={s.searchRow}>
-        <View style={s.inputWrap}>
-          <Ionicons name="search" size={16} color={colors.textMuted} style={{ marginRight: 8 }} />
-          <TextInput
-            style={s.input}
-            placeholder="job title, e.g. software engineer, registered nurse, sales rep..."
-            placeholderTextColor={colors.textMuted}
-            value={query}
-            onChangeText={setQuery}
-            onSubmitEditing={search}
-            returnKeyType="search"
-          />
-        </View>
-        <TouchableOpacity style={s.searchBtn} onPress={search} disabled={loading} activeOpacity={0.8}>
-          {loading
-            ? <ActivityIndicator color="#fff" size="small" />
-            : <Ionicons name="arrow-forward" size={18} color="#fff" />
+      {/* Search — job title */}
+      <View style={s.inputWrap}>
+        <Ionicons name="search" size={16} color={colors.textMuted} style={{ marginRight: 8 }} />
+        <TextInput
+          style={s.input}
+          placeholder="job title, e.g. registered nurse, sales rep..."
+          placeholderTextColor={colors.textMuted}
+          value={query}
+          onChangeText={setQuery}
+          onSubmitEditing={search}
+          returnKeyType="next"
+        />
+      </View>
+
+      {/* Search — location (optional) */}
+      <View style={[s.inputWrap, { marginTop: 8 }]}>
+        <Ionicons name="location-outline" size={16} color={colors.textMuted} style={{ marginRight: 8 }} />
+        <TextInput
+          style={s.input}
+          placeholder="location, e.g. Chicago, IL (optional)"
+          placeholderTextColor={colors.textMuted}
+          value={location}
+          onChangeText={setLocation}
+          onSubmitEditing={search}
+          returnKeyType="search"
+        />
+        <TouchableOpacity onPress={useMyLocation} disabled={locating} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          {locating
+            ? <ActivityIndicator size="small" color={accent} />
+            : <Ionicons name="navigate-outline" size={18} color={accent} />
           }
         </TouchableOpacity>
       </View>
+
+      <TouchableOpacity style={s.searchBtn} onPress={search} disabled={loading} activeOpacity={0.8}>
+        {loading
+          ? <ActivityIndicator color="#fff" size="small" />
+          : (
+            <>
+              <Ionicons name="search" size={16} color="#fff" />
+              <Text style={s.searchBtnText}>Search Jobs</Text>
+            </>
+          )
+        }
+      </TouchableOpacity>
 
       {/* Error */}
       {error && (
@@ -150,8 +215,8 @@ export default function JobsScreen() {
           )}
 
           {/* Job cards */}
-          {matchResult.topMatches.map((job, index) => (
-            <JobCard key={`${job.jobId}-${index}`} job={job} onPress={() => onJobPress(job)} colors={colors} accent={accent} />
+          {matchResult.topMatches.map(job => (
+            <JobCard key={job.jobId} job={job} onPress={() => onJobPress(job)} colors={colors} accent={accent} />
           ))}
         </>
       )}
@@ -171,10 +236,10 @@ const styles = (colors: any, accent: string) => StyleSheet.create({
   container:   { flex: 1, backgroundColor: colors.background },
   content:     { padding: 16, paddingTop: Platform.OS === 'ios' ? 60 : 24, paddingBottom: 40 },
   heading:     { fontSize: 28, fontWeight: '700', color: colors.text, marginBottom: 16 },
-  searchRow:   { flexDirection: 'row', gap: 8, marginBottom: 16 },
-  inputWrap:   { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: Platform.OS === 'ios' ? 10 : 8, paddingHorizontal: 12, paddingVertical: Platform.OS === 'ios' ? 12 : 8 },
+  inputWrap:   { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: Platform.OS === 'ios' ? 10 : 8, paddingHorizontal: 12, paddingVertical: Platform.OS === 'ios' ? 12 : 8 },
   input:       { flex: 1, color: colors.text, fontSize: 15 },
-  searchBtn:   { backgroundColor: accent, borderRadius: Platform.OS === 'ios' ? 10 : 8, padding: 12, alignItems: 'center', justifyContent: 'center', width: 44 },
+  searchBtn:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: accent, borderRadius: Platform.OS === 'ios' ? 10 : 8, padding: 14, marginTop: 12, marginBottom: 16 },
+  searchBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
   errorBox:    { backgroundColor: colors.surface, borderRadius: 10, padding: 12, marginBottom: 12 },
   meta:        { fontSize: 13, color: colors.textMuted, marginBottom: 12 },
   summaryCard: { backgroundColor: colors.surface, borderRadius: 12, padding: 14, marginBottom: 12, borderLeftWidth: 3, borderLeftColor: accent },

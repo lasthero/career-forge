@@ -23,8 +23,11 @@ export default function UploadScreen() {
 
   const pick = async () => {
     try {
+      // don't filter by type here — on some Android versions, filtering by
+      // application/pdf causes the picker to show no files or behave
+      // unexpectedly. Letting users pick any file, then validating after,
+      // is more reliable across devices.
       const result = await DocumentPicker.getDocumentAsync({
-        type: 'application/pdf',
         copyToCacheDirectory: true,
       });
 

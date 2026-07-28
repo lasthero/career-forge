@@ -1,15 +1,10 @@
+// career-forge/app/_layout.tsx
 // Root layout — wraps all routes with gesture handler and status bar
-import 'expo-crypto'
+import 'expo-crypto'; // polyfills crypto.getRandomValues for Crypto.randomUUID()
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useColorScheme, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-
-// log all unhandled errors to Metro console
-ErrorUtils.setGlobalHandler((error, isFatal) => {
-  console.error(`[${isFatal ? 'FATAL' : 'ERROR'}]`, error.message);
-  console.error(error.stack);
-});
 
 export default function RootLayout() {
   const scheme = useColorScheme();

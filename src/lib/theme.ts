@@ -1,3 +1,4 @@
+// career-forge/src/lib/theme.ts
 // Theme system — iOS/Android native colors, dark/light mode support
 import { Platform, useColorScheme } from 'react-native';
 
