@@ -63,11 +63,8 @@ export default function UploadScreen() {
 
     } catch (err: any) {
       setStatus('idle');
-      if (err.message === 'RATE_LIMITED') {
-        setError('Daily limit reached (3/day). Try again tomorrow.');
-      } else {
-        setError(err.message ?? 'Something went wrong. Please try again.');
-      }
+      // the server's message already explains the shared daily limit clearly
+      setError(err.message ?? 'Something went wrong. Please try again.');
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
   };

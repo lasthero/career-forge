@@ -1,3 +1,4 @@
+// career-forge/src/screens/SettingsScreen.tsx
 import React from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
@@ -7,7 +8,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../lib/theme';
-import { clearStoredResume } from '../lib/api';
+import { clearStoredResume, lastRateLimitStatus } from '../lib/api';
 import { useResumeStore } from '../lib/store';
 
 const Row = ({ icon, label, value, onPress, destructive, colors, accent }: any) => (
@@ -84,6 +85,18 @@ export default function SettingsScreen() {
             accent={accent}
           />
         )}
+      </View>
+
+      {/* Usage section */}
+      <Text style={s.sectionLabel}>Daily Usage</Text>
+      <View style={s.section}>
+        <Row
+          icon="speedometer-outline"
+          label="Requests remaining today"
+          value={lastRateLimitStatus ? `${lastRateLimitStatus.remaining} of ${lastRateLimitStatus.limit}` : 'Make a request to see'}
+          colors={colors}
+          accent={accent}
+        />
       </View>
 
       {/* Privacy section */}

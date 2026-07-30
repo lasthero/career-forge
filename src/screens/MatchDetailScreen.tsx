@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTheme, fonts } from '../lib/theme';
 import { useResumeStore } from '../lib/store';
-import { getInterviewPrep } from '../lib/api';
+import { getInterviewPrep, lastRateLimitStatus } from '../lib/api';
 
 const Tag = ({ label, color, bg }: { label: string; color: string; bg: string }) => (
   <View style={{ backgroundColor: bg, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4, marginRight: 6, marginBottom: 6 }}>
@@ -24,6 +24,7 @@ export default function MatchDetailScreen() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [usage, setUsage] = useState<{ limit: number; remaining: number } | null>(lastRateLimitStatus);
   const [showPrep, setShowPrep] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
 
@@ -47,11 +48,12 @@ export default function MatchDetailScreen() {
       );
       setInterviewPrep(prep);
       setShowPrep(true);
+      setUsage(lastRateLimitStatus);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (err: any) {
-      setError(err.message === 'RATE_LIMITED'
-        ? 'Daily limit reached. Try again tomorrow.'
-        : err.message);
+      // the server's message already explains the shared daily limit clearly
+      setError(err.message);
+      setUsage(lastRateLimitStatus); // header is set even on 429 responses
     } finally {
       setLoading(false);
     }
@@ -61,6 +63,10 @@ export default function MatchDetailScreen() {
   const description = selectedJob.description ?? '';
   const descriptionPreview = description.slice(0, 400);
   const hasMoreDescription = description.length > 400;
+  // fall back to [] — older cached matches (from before this field existed)
+  // or an API response that hasn't been redeployed yet won't have these
+  const requirements = selectedJob.requirements ?? [];
+  const preferredRequirements = selectedJob.preferredRequirements ?? [];
 
   return (
     <ScrollView style={s.container} contentContainerStyle={s.content}>
@@ -110,10 +116,10 @@ export default function MatchDetailScreen() {
       </View>
 
       {/* Requirements — structured bullets extracted by AI from the posting */}
-      {selectedJob.requirements.length > 0 ? (
+      {requirements.length > 0 ? (
         <View style={s.card}>
           <Text style={s.sectionLabel}>Requirements</Text>
-          {selectedJob.requirements.map((req, i) => (
+          {requirements.map((req, i) => (
             <Text key={`req-${i}`} style={s.reqBullet}>• {req}</Text>
           ))}
         </View>
@@ -140,10 +146,10 @@ export default function MatchDetailScreen() {
       )}
 
       {/* Preferred requirements — "nice to have", shown only if the posting distinguished them */}
-      {selectedJob.preferredRequirements.length > 0 && (
+      {preferredRequirements.length > 0 && (
         <View style={s.card}>
           <Text style={s.sectionLabel}>Preferred Requirements</Text>
-          {selectedJob.preferredRequirements.map((req, i) => (
+          {preferredRequirements.map((req, i) => (
             <Text key={`pref-${i}`} style={s.reqBullet}>• {req}</Text>
           ))}
         </View>
@@ -241,6 +247,12 @@ export default function MatchDetailScreen() {
 
       {error && (
         <Text style={{ color: colors.error, fontSize: 14, textAlign: 'center', marginTop: 8 }}>{error}</Text>
+      )}
+
+      {usage && (
+        <Text style={{ textAlign: 'center', color: usage.remaining === 0 ? colors.error : colors.textMuted, fontSize: 12, marginTop: 12 }}>
+          {usage.remaining} of {usage.limit} free requests left today
+        </Text>
       )}
     </ScrollView>
   );

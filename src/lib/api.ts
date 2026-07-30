@@ -68,9 +68,9 @@ export async function getDeviceId(): Promise<string> {
   let deviceId = await SecureStore.getItemAsync('deviceId');
   if (!deviceId) {
     deviceId = Device.modelId ?? Crypto.randomUUID();
-    await SecureStore.setItemAsync('deviceId', deviceId);
+    await SecureStore.setItemAsync('deviceId', deviceId!);
   }
-  return deviceId;
+  return deviceId!;
 }
 
 // ── Local resume storage ──────────────────────────────────────────────────────
@@ -136,6 +136,11 @@ export type InterviewPrep = {
 };
 
 // ── Base fetch ────────────────────────────────────────────────────────────────
+// last known rate limit status — updated after every successful call,
+// so the UI can show "X requests remaining today" proactively rather
+// than only finding out when the user finally hits the wall
+export let lastRateLimitStatus: { limit: number; remaining: number } | null = null;
+
 async function apiFetch(path: string, options: RequestInit = {}) {
   const deviceId = await getDeviceId();
 
@@ -149,13 +154,32 @@ async function apiFetch(path: string, options: RequestInit = {}) {
     },
   });
 
-  if (res.status === 429) throw new Error('RATE_LIMITED');
+  const limitHeader     = res.headers.get('X-RateLimit-Limit');
+  const remainingHeader = res.headers.get('X-RateLimit-Remaining');
+  if (limitHeader && remainingHeader) {
+    lastRateLimitStatus = { limit: Number(limitHeader), remaining: Number(remainingHeader) };
+  }
+
+  if (res.status === 429) {
+    const err = await res.json().catch(() => ({}));
+    // use the server's detailed message (explains the shared daily pool)
+    // rather than a generic client-side fallback
+    throw new Error(err.error ?? 'RATE_LIMITED');
+  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error ?? `API error ${res.status}`);
   }
 
-  return res.json();
+  // a 2xx status doesn't guarantee a JSON body — e.g. EXPO_PUBLIC_API_URL
+  // missing/stale in the bundle sends this at a dev-server or CDN page
+  // instead of the API, which responds 200 with HTML. Surface that clearly
+  // instead of letting the raw SyntaxError ("Unexpected token '<'") through.
+  try {
+    return await res.json();
+  } catch {
+    throw new Error('Server returned an unexpected response — check that EXPO_PUBLIC_API_URL is set and the app was rebuilt/reloaded after any .env change.');
+  }
 }
 
 // ── 1. Parse resume — PDF text extracted server-side, never sent as raw binary ─

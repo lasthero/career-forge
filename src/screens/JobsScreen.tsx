@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTheme, fonts } from '../lib/theme';
 import { useResumeStore } from '../lib/store';
-import { matchJobs, JobMatch } from '../lib/api';
+import { matchJobs, JobMatch, lastRateLimitStatus } from '../lib/api';
 import { getCurrentCityLocation } from '../lib/location';
 
 const recColors: Record<string, string> = {
@@ -68,6 +68,7 @@ export default function JobsScreen() {
   const [locating, setLocating] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [usage, setUsage] = useState<{ limit: number; remaining: number } | null>(lastRateLimitStatus);
 
   const useMyLocation = async () => {
     setLocating(true);
@@ -109,13 +110,16 @@ export default function JobsScreen() {
       }
 
       setMatchResult(result);
+      setUsage(lastRateLimitStatus);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (err: any) {
       if (thisRequestId !== searchRequestId.current) return; // stale error too
 
-      setError(err.message === 'RATE_LIMITED'
-        ? 'Daily limit reached (3/day). Try again tomorrow.'
-        : err.message);
+      // the server's message already explains the shared daily limit clearly
+      // (e.g. "you've used all 3 free requests... resume parsing, job
+      // matching, and interview prep all share this daily limit")
+      setError(err.message);
+      setUsage(lastRateLimitStatus); // header is set even on 429 responses
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       if (thisRequestId === searchRequestId.current) {
@@ -180,6 +184,13 @@ export default function JobsScreen() {
           )
         }
       </TouchableOpacity>
+
+      {/* Daily usage indicator — updates after each search */}
+      {usage && (
+        <Text style={{ textAlign: 'center', color: usage.remaining === 0 ? colors.error : colors.textMuted, fontSize: 12, marginBottom: 12 }}>
+          {usage.remaining} of {usage.limit} free requests left today
+        </Text>
+      )}
 
       {/* Error */}
       {error && (
